@@ -3,8 +3,6 @@ api:
   build: ./api
   ports:
    - "8001:8080"
-  volumes:
-   - "./api:/usr/src/app"
   links:
    - redis
    - mongodb
@@ -13,8 +11,6 @@ administration:
   build: ./administration
   ports:
    - "8000:8080"
-  volumes:
-   - "./administration:/usr/src/app"
   links:
    - redis
    - api
