@@ -1,0 +1,28 @@
+api:
+  env_file: .env
+  build: ./api
+  ports:
+   - "8001:8080"
+  volumes:
+   - "./api:/usr/src/app"
+  links:
+   - redis
+   - mongodb
+administration:
+  env_file: .env
+  build: ./administration
+  ports:
+   - "8000:8080"
+  volumes:
+   - "./administration:/usr/src/app"
+  links:
+   - redis
+   - api
+   - mongodb
+redis:
+  image: redis
+mongodb:
+  image: mongo:3.2
+  ports:
+   - "27017:27017"
+  command: mongod --smallfiles --rest --noauth
