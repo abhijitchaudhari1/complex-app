@@ -1,16 +1,38 @@
 version: '2'
 services:
   api:
-    env_file: .env
+    environment:
+      - NODE_ENV=production
     build: ./api
+  api-blue:
+    environment: 
+      - api=api-blue
+    extends:
+      service: api
+  api-green:
+    environment: 
+      - api=api-green
+    extends:
+      service: api
 #    ports:
 #      - "8001:8080"
     # links:
     #   - "redis:redis"
     #   - "mongodb:mongodb"
   administration:
-    env_file: .env
+    environment:
+      - NODE_ENV=production
     build: ./administration
+  administration-green:
+    environment: 
+      - api=api-green
+    extends:
+      service: administration
+  administration-blue:
+    environment: 
+      - api=api-blue
+    extends:
+      service: administration
  #   ports:
  #     - "8000:8080"
     # links:
