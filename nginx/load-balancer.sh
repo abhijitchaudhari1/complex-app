@@ -1,13 +1,40 @@
-#!/bin/bash -e
+#!/bin/bash 
+while getopts ":e:c:s:p:" OPTION
+do
+	case $OPTION in
+		c)
+		 	colour="${OPTARG:-blue}"
+			;;
+		s)
+			swarm_cluster_name="${OPTARG:-master-2}"
+			;;
+		p)
+			primary="${OPTARG:-master-1}"
+			;;
+		e)
+			ETCD="${OPTARG}"
+	esac
+done
+colour="${colour:-blue}"
+swarm_cluster_name="${swarm_cluster_name:-master-2}"
+primary="${primary:-master-1}"
+ETCD="${ETCD:-104.131.180.93:5002}"
+if [ $colour == "blue" ]
+	then
+	opp_colour="green"
+else
+	opp_colour="blue"
+fi
 count=1
+#colour=blue
 ##Set app name to current directory name
 app=$(basename `pwd` | tr -d '-')
 #Set this value to the swarm cluster name which you can see "docker-machine ls"
 #Set this either while running the script like ./script "swarm-cluster-name"  or edit directly into the file 
-swarm_cluster_name="${1:-master-2}"
+#swarm_cluster_name="${1:-master-2}"
 #Set this values the current primary node of swarm cluster 
 #Set this either while running the script like  ./script "swarm-cluster-name" "primary-name" or edit directly into the file 
-primary="${2:-master-1}" 
+#primary="${2:-master-1}" 
 #Set Nginx load balancer port
 port=80
 ##Set the network name using name of current directory
@@ -27,13 +54,15 @@ rm -rf nginx/default.conf
 #Create the default.conf for nginx site 
 echo 'upstream api {' >> nginx/default.conf
 #Get IPs of add api containers
-api_cont=`docker network inspect    ${net} | grep "${app}_api_" -A 3 | grep 'IPv4Address' | cut -d'"' -f4 | cut -d'/' -f 1`
+api_cont=`docker network inspect    ${net} | grep "${app}_api-${colour}_" -A 3 | grep 'IPv4Address' | cut -d'"' -f4 | cut -d'/' -f 1`
+opp_api_cont_IDs=`docker ps | grep "${app}_api-${opp_colour}_" | awk '{print $1}'`
 #Write the API container IPS to default.conf for nginx site 
 for api_mem in $api_cont ; do    echo "server ${api_mem}:8080;" >> nginx/default.conf; done
 echo "}" >> nginx/default.conf
 echo 'upstream admin {' >> nginx/default.conf
 #Get IPs of add admin containers
-admin_cont=`docker network inspect    ${net} | grep "${app}_administration_" -A 3 | grep 'IPv4Address' | cut -d'"' -f4 | cut -d'/' -f 1`
+admin_cont=`docker network inspect    ${net} | grep "${app}_administration-${colour}_" -A 3 | grep 'IPv4Address' | cut -d'"' -f4 | cut -d'/' -f 1`
+opp_admin_cont_IDs=`docker ps | grep "${app}_administration-${opp_colour}_" | awk '{print $1}'`
 #Write the admin container IPS to default.conf for nginx site 
 for admin_mem in $admin_cont ; do    echo "server ${admin_mem}:8080;" >> nginx/default.conf; done
 #echo 'fQpzZXJ2ZXIgewogICAgbGlzdGVuIDgwIDsKICAgIHNlcnZlcl9uYW1lIGxvY2FsaG9zdDsKCiAgICBsb2NhdGlvbiAvYXBpIHsKICAgICAgICBwcm94eV9wYXNzIGh0dHA6Ly9hcGkvOwogICAgfQogICAgbG9jYXRpb24gL2FkbWluIHsKICAgICAgICBwcm94eV9wYXNzIGh0dHA6Ly9hZG1pbi87CiAgICB9Cn0K' | base64 --decode >> nginx/default.conf
@@ -100,4 +129,20 @@ else
 fi
 count=$(( count + 1 ))
 done
+if [ ! -z  $opp_api_cont_IDs ]
+	then
+	echo "Stopping the api container in ${opp_colour}"
+	docker stop ${opp_api_cont_IDs}
+fi
+if [ ! -z  $opp_admin_cont_IDs ]
+	then
+	echo "Stopping the admin container in ${opp_colour}"
+	docker stop ${opp_admin_cont_IDs}
+fi
+
+echo "Setting the running as colour to ${colour} in  ETCD"
+curl -L -X PUT http://${ETCD}/v2/keys/colour -d value="${colour}"
+
+
+
 
