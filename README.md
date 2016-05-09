@@ -181,31 +181,24 @@ It will show something like this
 
 <img src="images/swarm-con.png" />
 
-###HA Load Balancing for api and admin containers using nginx. 
-
-To perform load balancing for api and admin server, we will launch the nginx container on each swarm cluster member. 
-Each nginx load-balancer container will point to the all the existing api and admin container and will bind a host port ( currently 80 ) to listen to api and admin calls.
 
 
-To create the load-balancer on each swarm cluster member, excute the following script first argument as swarm cluster name ( In this case it will be **swarm-master-replica**) and second argument as swarm primary name ( in this case it will **swarm-master-1**)
 
-<pre>
-	./load-balancer.sh "swarm-master-replica" "swarm-master-1"
-</pre>
+###Blue-Green deployment 
 
-This will set up the load balancer, to access the api and admin server.
+To deploy your application using   blue green stratagy, 
 
-look for the any ip address of swarm member 
+ * Update files in your api or administration folder if required ( If your deploying fo the first time skip this step ).
+ * Run the script with your infra paramerts like "swarm primary name" , etcd cluster endpoint and and swarm cluster name 
 
-To get the exact IPS 
+ 	<pre> 
+ 		./deploy.sh -e 'YOUR_ETCD_ENDPOINT' -s 'YOUR_SWARM_CLUSTER_NAME' -p 'YOUR_SWARM_PRIMARY' 
+ 	</pre>
 
-<img src="images/lb-con.png" />
+This will create the application stack in blue zone if this is the first time or it will create the stack in the zone which is not currently serving the actual traffic.
 
-Hit the load balancer endpoint in your web browser to test if it is working.
+Once the script execution is completed, you will have your app deployed with load balancers.
 
-<img src="images/api.png" />
-
-<img src="images/admin.png" />
 
 
 ###Scale the container.
@@ -217,81 +210,15 @@ docker-compose scale &lt;service_name&gt;=&lt;count&gt;
 <pre>
 	##Change env to docker swarm primary 
 	eval $(docker-machine env --swarm swarm-master-1)
-	docker-compose scale api=2
+	docker-compose scale administration-green=2
 </pre>
 
 Once the scaling is done, wait for sometime until the container is up and has the entry in overlay network.
-
-To test if the container is registered with network 
+After that is done, execute the load-balancer.sh script with following arguments
 
 <pre> 
-	docker network inspect    complexapp_default
+	nginx/load-balancer.sh -e 'YOUR_ETCD_ENDPOINT' -s 'YOUR_SWARM_CLUSTER_NAME' -p 'YOUR_SWARM_PRIMARY'  -c 'COLOUR_SCHEME_OF_ACTIVE_APPLICATION'
 </pre>
-
-onec the o/p of above cmd shows the entry of new container, execute the **load-balancer.sh** script to reflect those changes. 
-
-
-###Blue-Green deployment 
-
-To apply blue-green deployment using the docker-compose, following  things required.
-
-  * Change the Present working directoy name / change the Present working directoy
-  * Copy the **nginx** folder to the new Present working directoy.
-
-
-Docker compose will launch the all the service in your docker-compose.yml file with the **prefix** as the present working directory name
-
-E.g.
-
-If the present working directoy is **~/docker-project/complex-app** then all the service containers will have prefix like **complexapp** along with the node name.
-
-
-<img src="images/prefix.png" />
-
-
-At the same time docker compose will create a new overlay  network for the app of not created already. The name of that name will have
-present wokring directory name as prefix.
-
-E.g.
-	
-If the present working directoy is **~/docker-project/complex-app** , then newtork name will be **complexapp_default**.
-
-
-<img src="images/network_prefix.png" />
-
-Using the above behavior, we can use either different directory altogether to launch the new version or we can chagne the name of current working directoy and then copy our new docker-compose.yml file to it.
-
-If you are going to use a altogther different directory, please copy the **nginx** folder to new docker-compose.yml directory.
-
-
-Once the above steps are done, you will have a 
-
-  * New/name changed present working directory with your new docker-compose.yml and nginx folder in it.
-
-
-To create the new version 
-
-<pre>
-	docker-compose up -d 
-
-</pre>
-
-This will launch the new version of your app on a different network than your old app, but right now this new version app will get actual traffic until you make the changes to load balancers.
-
-
-To route the actual traffic to the new version,load balancers must on 
- 
- * The same network as the app
- * It should point to the correct IPs of app and admin server 
-
-
-To do that you, just have run the **load-balancer.sh** script. { Note before running the script make sure the parameters inside the script are correclty set}
-
-<pre>
-	nginx/load-balancer.sh
-</pre>
-
-
 
 
 
